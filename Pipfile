@@ -11,6 +11,7 @@ pydantic-settings = "*"
 pydantic = {extras = ["email"], version = "*"}
 email-validator = "*"
 python-multipart = "*"
+reportlab = "*"
 
 [dev-packages]
 
