@@ -10,7 +10,7 @@ from database import supabase
 
 router = APIRouter()
 
-@router.post("/expenses", response_model=ExpenseResponse)
+@router.post("/add-expense", response_model=ExpenseResponse)
 async def create_expense(expense: ExpenseCreate):
     try:
         # splits based on split_type
@@ -112,7 +112,7 @@ async def get_balance_sheet():
             detail=f"Error generating balance sheet: {str(e)}"
         )
 
-@router.get("/balance-sheet/u/{user_id}")
+@router.get("/e/{user_id}")
 async def get_user_balance_sheet(user_id: UUID):
     try:
         expenses = get_expenses().data
@@ -158,7 +158,7 @@ async def get_user_balance_sheet(user_id: UUID):
             detail=f"Error generating user balance sheet: {str(e)}"
         )
 
-@router.get("/balance-sheet/e/all")
+@router.get("/e/all")
 async def get_overall_expenses():
     try:
         users = get_users()
