@@ -1,8 +1,8 @@
 import uuid
 from fastapi import APIRouter, HTTPException
 from schema.user import UserCreate, UserResponse, UserUpdate
-from database import supabase
 from typing import List
+from database import supabase
 
 router = APIRouter()
 
