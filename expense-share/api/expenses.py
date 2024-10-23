@@ -252,3 +252,62 @@ async def get_user_balance_sheet(user_id: UUID):
             status_code=400,
             detail=f"Error generating user balance sheet: {str(e)}"
         )
+
+@router.get("/balance-sheet/e/all")
+async def get_overall_expenses():
+    try:
+        users_response = supabase.table('users').select('*').execute()
+        users = {user['id']: user['name'] for user in users_response.data}
+        expenses_response = supabase.table('expenses').select('*').execute()
+        splits_response = supabase.table('expense_splits').select('*').execute()
+
+        expense_summaries = []
+        total_amount = 0
+
+        for expense in expenses_response.data:
+            expense_splits = [
+                split for split in splits_response.data 
+                if split['expense_id'] == expense['id']
+            ]
+
+            split_details = []
+            for split in expense_splits:
+                split_details.append({
+                    "user_name": users[split['user_id']],
+                    "amount": split['amount'],
+                    "percentage": split['percentage'],
+                    "type": "paid" if split['user_id'] == expense['created_by'] else "owes"
+                })
+
+            # Add to total amount
+            total_amount += expense['amount']
+
+            # Create expense summary
+            expense_summaries.append({
+                "expense_id": expense['id'],
+                "name": expense['name'],
+                "description": expense['description'],
+                "amount": expense['amount'],
+                "date": expense['created_at'],
+                "split_type": expense['split_type'],
+                "paid_by": users[expense['created_by']],
+                "splits": split_details
+            })
+
+        # Sort expenses by date (most recent first)
+        expense_summaries.sort(key=lambda x: x['date'], reverse=True)
+
+        return {
+            "overview": {
+                "total_expenses": len(expense_summaries),
+                "total_amount": total_amount,
+                "average_amount": round(total_amount / len(expense_summaries), 2) if expense_summaries else 0
+            },
+            "expenses": expense_summaries
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error getting overall expenses: {str(e)}"
+        )
