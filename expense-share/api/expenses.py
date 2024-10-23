@@ -97,49 +97,13 @@ async def create_expense(expense: ExpenseCreate):
 @router.get("/balance-sheet")
 async def get_balance_sheet():
     try:
-        users_response = supabase.table('users').select('*').execute()
-        users = {user['id']: user['name'] for user in users_response.data}
-        expenses_response = supabase.table('expenses').select('*').execute()
-        splits_response = supabase.table('expense_splits').select('*').execute()
-
-        balances = defaultdict(lambda: defaultdict(float))
+        users = get_users()
+        expenses = get_expenses().data
+        splits = get_splits().data
         
-        # Calculate balances
-        for expense in expenses_response.data:
-            expense_splits = [
-                split for split in splits_response.data 
-                if split['expense_id'] == expense['id']
-            ]
-            
-            payer_id = expense['created_by']
-            
-            for split in expense_splits:
-                user_id = split['user_id']
-                if user_id != payer_id:  # Skip if user is the payer
-                    balances[user_id][payer_id] += split['amount']
-
-        # Format balances - Modified this part
-        formatted_balances = []
-        processed_pairs = set()  # To avoid duplicate processing
-
-        for user1, user_balances in balances.items():
-            for user2, amount in user_balances.items():
-                pair_key = tuple(sorted([user1, user2]))
-                if pair_key not in processed_pairs and abs(amount) > 0.01:
-                    processed_pairs.add(pair_key)
-                    formatted_balances.append({
-                        "from_user": {
-                            "id": user1,
-                            "name": users[user1]
-                        },
-                        "to_user": {
-                            "id": user2,
-                            "name": users[user2]
-                        },
-                        "amount": abs(amount),
-                        "direction": "owes"  # Since we're only storing positive owes amounts
-                    })
-
+        balances = calculate_balances(expenses, splits)
+        formatted_balances = format_balances(balances, users)
+        
         return formatted_balances
 
     except Exception as e:
@@ -151,72 +115,17 @@ async def get_balance_sheet():
 @router.get("/balance-sheet/u/{user_id}")
 async def get_user_balance_sheet(user_id: UUID):
     try:
-        
-        user_response = supabase.table('users').select('*').eq('id', str(user_id)).execute()
-        if not user_response.data:
+        expenses = get_expenses().data
+        splits = get_splits().data
+        user = get_users()[str(user_id)]
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Get all expenses where user is involved
-        expenses_response = supabase.table('expenses').select('*').execute()
-        splits_response = supabase.table('expense_splits').select('*').execute()
+        paid, owed, balances_by_user = calculate_user_expense_details(expenses, splits, user_id)
 
-        # Get all involved users
-        involved_users = set()
-        for expense in expenses_response.data:
-            involved_users.add(expense['created_by'])
-            expense_splits = [s for s in splits_response.data if s['expense_id'] == expense['id']]
-            for split in expense_splits:
-                involved_users.add(split['user_id'])
-
-        users_response = supabase.table('users').select('*').in_('id', list(involved_users)).execute()
-        users = {user['id']: user['name'] for user in users_response.data}
-
-        # Calculate balances with expense details
-        paid = 0
-        owed = 0
-        balances_by_user = defaultdict(lambda: {
-            "total": 0,
-            "expenses": []
-        })
-
-        for expense in expenses_response.data:
-            expense_splits = [s for s in splits_response.data if s['expense_id'] == expense['id']]
-            
-            if expense['created_by'] == str(user_id):
-                # User paid for this expense
-                paid += expense['amount']
-                for split in expense_splits:
-                    if split['user_id'] != str(user_id):
-                        balances_by_user[split['user_id']]["total"] += split['amount']
-                        balances_by_user[split['user_id']]["expenses"].append({
-                            "expense_name": expense['name'],
-                            "description": expense['description'],
-                            "date": expense['created_at'],
-                            "total_amount": expense['amount'],
-                            "split_amount": split['amount'],
-                            "split_type": expense['split_type']
-                        })
-            else:
-                # User owes money in another user's expense
-                for split in expense_splits:
-                    if split['user_id'] == str(user_id):
-                        owed += split['amount']
-                        balances_by_user[expense['created_by']]["total"] -= split['amount']
-                        balances_by_user[expense['created_by']]["expenses"].append({
-                            "expense_name": expense['name'],
-                            "description": expense['description'],
-                            "date": expense['created_at'],
-                            "total_amount": expense['amount'],
-                            "split_amount": split['amount'],
-                            "split_type": expense['split_type']
-                        })
-        # Detailed balances with user, amount, owe-direction and minimal expense details
         detailed_balances = [
             {
-                "user": {
-                    "id": user_id,
-                    "name": users[user_id]
-                },
+                "user": {"id": user_id, "name": user},
                 "total_amount": abs(user_data["total"]),
                 "direction": "owes_you" if user_data["total"] > 0 else "you_owe",
                 "expense_details": [
@@ -225,11 +134,7 @@ async def get_user_balance_sheet(user_id: UUID):
                         "amount": expense['split_amount'],
                         "type": "owes_you" if user_data["total"] > 0 else "you_owe"
                     }
-                    for expense in sorted(
-                        user_data["expenses"],
-                        key=lambda x: x['date'],
-                        reverse=True
-                    )
+                    for expense in sorted(user_data["expenses"], key=lambda x: x['date'], reverse=True)
                 ]
             }
             for user_id, user_data in balances_by_user.items()
@@ -256,10 +161,9 @@ async def get_user_balance_sheet(user_id: UUID):
 @router.get("/balance-sheet/e/all")
 async def get_overall_expenses():
     try:
-        users_response = supabase.table('users').select('*').execute()
-        users = {user['id']: user['name'] for user in users_response.data}
-        expenses_response = supabase.table('expenses').select('*').execute()
-        splits_response = supabase.table('expense_splits').select('*').execute()
+        users = get_users()
+        expenses_response = get_expenses()
+        splits_response = get_splits()
 
         expense_summaries = []
         total_amount = 0
@@ -311,3 +215,82 @@ async def get_overall_expenses():
             status_code=400,
             detail=f"Error getting overall expenses: {str(e)}"
         )
+
+def get_users():
+    users_response = supabase.table('users').select('*').execute()
+    return {user['id']: user['name'] for user in users_response.data}
+
+def get_expenses():
+    return supabase.table('expenses').select('*').execute()
+
+def get_splits():
+    return supabase.table('expense_splits').select('*').execute()
+
+def calculate_balances(expenses, splits, user_id=None):
+    balances = defaultdict(lambda: defaultdict(float))
+    for expense in expenses:
+        expense_splits = [split for split in splits if split['expense_id'] == expense['id']]
+        payer_id = expense['created_by']
+        
+        for split in expense_splits:
+            split_user_id = split['user_id']
+            if user_id is None or split_user_id == user_id or payer_id == user_id:
+                if split_user_id != payer_id:
+                    balances[split_user_id][payer_id] += split['amount']
+    
+    return balances
+
+def format_balances(balances, users):
+    formatted_balances = []
+    processed_pairs = set()
+    
+    for user1, user_balances in balances.items():
+        for user2, amount in user_balances.items():
+            pair_key = tuple(sorted([user1, user2]))
+            if pair_key not in processed_pairs and abs(amount) > 0.01:
+                processed_pairs.add(pair_key)
+                formatted_balances.append({
+                    "from_user": {"id": user1, "name": users[user1]},
+                    "to_user": {"id": user2, "name": users[user2]},
+                    "amount": abs(amount),
+                    "direction": "owes"
+                })
+    
+    return formatted_balances
+
+def calculate_user_expense_details(expenses, splits, user_id):
+    paid = 0
+    owed = 0
+    balances_by_user = defaultdict(lambda: {"total": 0, "expenses": []})
+    
+    for expense in expenses:
+        expense_splits = [s for s in splits if s['expense_id'] == expense['id']]
+        
+        if expense['created_by'] == str(user_id):
+            paid += expense['amount']
+            for split in expense_splits:
+                if split['user_id'] != str(user_id):
+                    balances_by_user[split['user_id']]["total"] += split['amount']
+                    balances_by_user[split['user_id']]["expenses"].append({
+                        "expense_name": expense['name'],
+                        "description": expense['description'],
+                        "date": expense['created_at'],
+                        "total_amount": expense['amount'],
+                        "split_amount": split['amount'],
+                        "split_type": expense['split_type']
+                    })
+        else:
+            for split in expense_splits:
+                if split['user_id'] == str(user_id):
+                    owed += split['amount']
+                    balances_by_user[expense['created_by']]["total"] -= split['amount']
+                    balances_by_user[expense['created_by']]["expenses"].append({
+                        "expense_name": expense['name'],
+                        "description": expense['description'],
+                        "date": expense['created_at'],
+                        "total_amount": expense['amount'],
+                        "split_amount": split['amount'],
+                        "split_type": expense['split_type']
+                    })
+    
+    return paid, owed, balances_by_user

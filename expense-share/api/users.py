@@ -61,13 +61,12 @@ async def update_user_data(user_id: str, user: UserUpdate):
                 detail="Invalid user ID format. Must be a valid UUID."
             )
 
-        # First check if user exists
+        # First check if user exists and then proceed with update
         check_user = supabase.table('users').select("*").eq('id', str(uuid_obj)).execute()
         
         if not check_user.data:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # If user exists, proceed with update
         update_data = user.model_dump(exclude_unset=True)
         response = supabase.table('users').update(
             update_data
