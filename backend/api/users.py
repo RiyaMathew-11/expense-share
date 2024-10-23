@@ -6,7 +6,7 @@ from database import supabase
 
 router = APIRouter()
 
-@router.post("/users", response_model=UserResponse)
+@router.post("/add-user", response_model=UserResponse)
 async def create_user(user: UserCreate):
     try:
         response = supabase.table('users').insert({

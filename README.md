@@ -54,7 +54,7 @@ expense-share/
 - Supabase account
 
 
-### 1. Project Setup
+### Project Setup
 
 1. Clone the repository
 
@@ -83,7 +83,7 @@ uvicorn main:app --reload
 
 
 
-### 2. Supabase Setup
+### Supabase Setup
 
 1. Start supabase:
     ```bash
@@ -95,4 +95,64 @@ uvicorn main:app --reload
    -- Copy contents from supabase/seed.sql and run in Supabase SQL editor
    ```
 
-Note: For this case, anonymous access is given to all
+Note: For this case, anonymous access is given to all. Refer [supabase cli documentation](https://supabase.com/docs/guides/local-development/cli/getting-started) in case if needed.
+
+---
+
+The API will be available at `http://localhost:8000` or any port that you choose to run the sever
+
+## Key Endpoints
+
+### Users
+
+- POST `/add-user` - Create user
+- GET `/u/{user_id}` - Get user details
+- PATCH `/u/{user_id}` - Update user details
+
+
+### Expenses
+
+- POST `/add-expense` - Create new expense
+- GET `/e/all` - List all expenses
+- GET `/e/user/{user_id}` - Get user's expenses
+
+
+### Balance Sheet
+
+- GET `/balance-sheet` - Get overall balance sheet (created for test round)
+- GET `/balance-sheet/download/u/{user_id}` - Download user's balance sheet (PDF)
+
+## Usage examples
+
+### Create a user:
+
+```bash
+curl -X POST "http://localhost:8000/add-user" \
+     -H "Content-Type: application/json" \
+     -d '{"email":"user@example.com","name":"Test User","mobile":"+912345678901"}'
+```
+
+### Add an expense:
+
+```bash
+curl -X POST "http://localhost:8000/add-expense" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "name": "Uber charges",
+           "description": "Uber taken to X place at Y",
+           "amount": 1000,
+           "created_by": "user-uuid",
+           "split_type": "EQUAL",
+           "splits": [
+             {"user_id": "user1-uuid"},
+             {"user_id": "user2-uuid"}
+           ]
+         }'
+
+```
+
+### Download balance sheet:
+
+```bash
+curl "http://localhost:8000/balance-sheet/download/u/{user-id}
+```
