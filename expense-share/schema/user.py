@@ -4,13 +4,13 @@ from typing import Optional, Annotated
 class UserCreate(BaseModel):
     email: EmailStr
     name: str
-    mobile: Annotated[str, StringConstraints(pattern=r'^\+?1?\d{9,15}$')]
+    mobile: Annotated[str, StringConstraints(pattern=r'^\+?91?\d{10}$')]
 
 class UserResponse(BaseModel):
     # Todo: remove email and mobile from response
     email: EmailStr
     name: str
-    mobile: Annotated[str, StringConstraints(pattern=r'^\+?1?\d{9,15}$')]
+    mobile: Annotated[str, StringConstraints(pattern=r'^\+?91?\d{10}$')]
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
