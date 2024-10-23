@@ -1,0 +1,10 @@
+# Python and environment
+
+__pycache__/
+.env
+.DS_Store
+venv/
+.vscode/
+
+# Supabase
+.branches/
