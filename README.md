@@ -95,7 +95,7 @@ uvicorn main:app --reload
    -- Copy contents from supabase/seed.sql and run in Supabase SQL editor
    ```
 
-Note: For this case, anonymous access is given to all. Refer [supabase cli documentation](https://supabase.com/docs/guides/local-development/cli/getting-started) in case if needed.
+Note: For this case, anonymous access is given to all. Refer `supabase cli` documentation in case if needed.
 
 ---
 
@@ -156,3 +156,11 @@ curl -X POST "http://localhost:8000/add-expense" \
 ```bash
 curl "http://localhost:8000/balance-sheet/download/u/{user-id}
 ```
+
+---
+
+### Reference Docs
+
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started)
+- [ReportLab](https://docs.reportlab.com/)
