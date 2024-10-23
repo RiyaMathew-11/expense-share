@@ -22,7 +22,7 @@ async def create_user(user: UserCreate):
             detail=f"Error creating user: {str(e)}"
         )
 
-@router.get("/users/{user_id}", response_model=UserResponse)
+@router.get("/u/{user_id}", response_model=UserResponse)
 async def get_user_data(user_id: str):
     try:
         response = supabase.table('users').select("*").eq('id', user_id).execute()
@@ -48,7 +48,7 @@ async def list_users():
             detail=f"Error listing users: {str(e)}"
         )
 
-@router.patch("/users/{user_id}", response_model=UserResponse)
+@router.patch("/u/{user_id}", response_model=UserResponse)
 async def update_user_data(user_id: str, user: UserUpdate):
     try:
         
