@@ -1,2 +1,1 @@
-## Expense sharing app with FASTAPI
-
+## Expense sharing app with FASTAP
