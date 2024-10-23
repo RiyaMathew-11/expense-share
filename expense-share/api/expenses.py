@@ -6,7 +6,7 @@ from schema.expense import (
     SplitType
 )
 from database import supabase
-from utils import (
+from helpers.utils import (
     get_users,
     get_expenses,
     get_splits,
@@ -123,7 +123,7 @@ async def get_balance_sheet():
         )
 
 
-@router.get("/e/{user_id}")
+@router.get("/e/user/{user_id}")
 async def get_user_balance_sheet(user_id: UUID):
     try:
         expenses = get_expenses().data
