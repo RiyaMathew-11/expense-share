@@ -1,6 +1,8 @@
 # Expense Sharing Application
 
-A FastAPI-based expense sharing application that helps users manage and split expenses, and generate balance sheets. Built with FastAPI and Supabase for the backend. Currently, this contains only backend.
+A FastAPI-based expense sharing application that helps users manage and split expenses, and generate balance sheets. Built with FastAPI and Supabase for the backend. Currently, this contains only backend, as it's a hobby project done to learn FastAPI. 
+
+A major todo will be to add a simple frontend or make this a mobile app which I will try to work on later.
 
 ## Features
 
